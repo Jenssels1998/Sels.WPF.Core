@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+	  <TargetFramework>netcoreapp3.1</TargetFramework>
+	  <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="Components\Converters\" />
+    <Folder Include="Extensions\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Sels.Core\Sels.Core.Unity\Sels.Core.Unity.csproj" />
+    <ProjectReference Include="..\..\Sels.Core\Sels.Core\Sels.Core.csproj" />
+  </ItemGroup>
+
+</Project>
