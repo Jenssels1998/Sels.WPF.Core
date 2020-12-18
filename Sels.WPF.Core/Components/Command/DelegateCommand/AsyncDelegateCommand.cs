@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using Sels.Core.Extensions.General.Generic;
 using Sels.Core.Extensions.General.Validation;
+using Sels.Core.Extensions.Execution.Linq;
 
 namespace Sels.WPF.Core.Components.Command.DelegateCommand
 {
@@ -13,33 +14,48 @@ namespace Sels.WPF.Core.Components.Command.DelegateCommand
         // Properties
         public Func<bool> CanExecuteDelegate { get; set; }
         public Func<Task> ExecuteDelegate { get; set; }
+        public Action<Exception> ExceptionHandler { get; set; }
 
         // Events
         public event EventHandler CanExecuteChanged = delegate { };
-        public AsyncDelegateCommand(Func<Task> executeDelegate, Func<bool> canExecuteDelegate = null)
+        public AsyncDelegateCommand(Func<Task> executeDelegate, Func<bool> canExecuteDelegate = null, Action<Exception> exceptionHandler = null)
         {
             executeDelegate.ValidateVariable(nameof(executeDelegate));
 
             ExecuteDelegate = executeDelegate;
             CanExecuteDelegate = canExecuteDelegate;
+            ExceptionHandler = exceptionHandler;
         }
 
         public bool CanExecute(object parameter)
         {
-            if (CanExecuteDelegate.HasValue())
+            try
             {
-                return CanExecuteDelegate();
+                if (CanExecuteDelegate.HasValue())
+                {
+                    return CanExecuteDelegate();
+                }
             }
-
+            catch (Exception ex) {
+                ExceptionHandler.ForceExecuteOrDefault(ex);
+            }
+            
             return true;
         }
 
         public async void Execute(object parameter)
         {
-            if (CanExecute(parameter))
+            try
             {
-                await ExecuteDelegate();
+                if (CanExecute(parameter))
+                {
+                    await ExecuteDelegate();
+                }
             }
+            catch (Exception ex)
+            {
+                ExceptionHandler.ForceExecuteOrDefault(ex);
+            }        
 
             RaiseCanExecuteChanged();
         }
@@ -55,22 +71,31 @@ namespace Sels.WPF.Core.Components.Command.DelegateCommand
         // Properties
         public Predicate<TParameter> CanExecuteDelegate { get; set; }
         public Func<TParameter, Task> ExecuteDelegate { get; set; }
+        public Action<Exception> ExceptionHandler { get; set; }
 
         // Events
         public event EventHandler CanExecuteChanged = delegate { };
-        public AsyncDelegateCommand(Func<TParameter, Task> executeDelegate, Predicate<TParameter> canExecuteDelegate = null)
+        public AsyncDelegateCommand(Func<TParameter, Task> executeDelegate, Predicate<TParameter> canExecuteDelegate = null, Action<Exception> exceptionHandler = null)
         {
             executeDelegate.ValidateVariable(nameof(executeDelegate));
 
             ExecuteDelegate = executeDelegate;
             CanExecuteDelegate = canExecuteDelegate;
+            ExceptionHandler = exceptionHandler;
         }
 
         public bool CanExecute(object parameter)
         {
-            if (CanExecuteDelegate.HasValue())
+            try
             {
-                return CanExecuteDelegate((TParameter)parameter);
+                if (CanExecuteDelegate.HasValue())
+                {
+                    return CanExecuteDelegate((TParameter)parameter);
+                }
+            }
+            catch (Exception ex)
+            {
+                ExceptionHandler.ForceExecuteOrDefault(ex);
             }
 
             return true;
@@ -78,9 +103,16 @@ namespace Sels.WPF.Core.Components.Command.DelegateCommand
 
         public async void Execute(object parameter)
         {
-            if (CanExecute(parameter))
+            try
             {
-                await ExecuteDelegate((TParameter)parameter);
+                if (CanExecute(parameter))
+                {
+                    await ExecuteDelegate((TParameter)parameter);
+                }
+            }
+            catch (Exception ex)
+            {
+                ExceptionHandler.ForceExecuteOrDefault(ex);
             }
 
             RaiseCanExecuteChanged();

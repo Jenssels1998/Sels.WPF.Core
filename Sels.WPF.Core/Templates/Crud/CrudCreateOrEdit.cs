@@ -23,7 +23,7 @@ namespace Sels.WPF.Core.Templates.Crud
                 SetValue(nameof(Object), value);
             }
         }
-
+        public bool HasValidationErrors => ValidationErrors.HasValue();
         public ObservableCollection<TValidationError> ValidationErrors {
             get
             {
@@ -31,7 +31,7 @@ namespace Sels.WPF.Core.Templates.Crud
             }
             set
             {
-                SetValue(nameof(ValidationErrors), value);
+                SetValue(nameof(ValidationErrors), value, (x,y) => RaisePropertyChanged(nameof(HasValidationErrors)));
             }
         }
 
@@ -40,12 +40,17 @@ namespace Sels.WPF.Core.Templates.Crud
         /// Command to trigger the saving of the current Object
         /// </summary>
         public ICommand SaveObjectCommand { get; }
+        /// <summary>
+        /// Command to raise an event that the user wants to cancel editing the current object
+        /// </summary>
+        public ICommand CancelEditCommand { get; }
 
         public CrudCreateOrEdit()
         {
             ClearState();
 
-            SaveObjectCommand = new AsyncDelegateCommand(SaveObject, () => Object != null);
+            SaveObjectCommand = new AsyncDelegateCommand(SaveObject, () => Object != null, exceptionHandler: RaiseExceptionOccured);
+            CancelEditCommand = new DelegateCommand(RaiseCancelEditRequest, () => Object != null, exceptionHandler: RaiseExceptionOccured);
         }
 
         /// <summary>
@@ -96,10 +101,17 @@ namespace Sels.WPF.Core.Templates.Crud
         /// Events that triggers when an object was persisted
         /// </summary>
         public event Action<TObject> ObjectPersistedEvent = delegate { };
-
         private void RaiseObjectPersisted()
         {
             ObjectPersistedEvent.Invoke(Object);
+        }
+        /// <summary>
+        /// Raised when used wants to cancel editing the current object
+        /// </summary>
+        public event Action<TObject> CancelEditRequest = delegate { };
+        private void RaiseCancelEditRequest()
+        {
+            CancelEditRequest.Invoke(Object);
         }
 
         // Abstractions

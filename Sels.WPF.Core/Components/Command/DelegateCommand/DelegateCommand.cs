@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Windows.Input;
+using Sels.Core.Extensions.Execution.Linq;
 
 namespace Sels.WPF.Core.Components.Command.DelegateCommand
 {
@@ -12,22 +13,31 @@ namespace Sels.WPF.Core.Components.Command.DelegateCommand
         // Properties
         public Func<bool> CanExecuteDelegate { get; set; }
         public Action ExecuteDelegate { get; set; }
+        public Action<Exception> ExceptionHandler { get; set; }
 
         // Events
         public event EventHandler CanExecuteChanged = delegate{};
-        public DelegateCommand(Action executeDelegate, Func<bool> canExecuteDelegate = null)
+        public DelegateCommand(Action executeDelegate, Func<bool> canExecuteDelegate = null, Action<Exception> exceptionHandler = null)
         {
             executeDelegate.ValidateVariable(nameof(executeDelegate));
 
             ExecuteDelegate = executeDelegate;
             CanExecuteDelegate = canExecuteDelegate;
+            ExceptionHandler = exceptionHandler;
         }
 
         public bool CanExecute(object parameter)
         {
-            if (CanExecuteDelegate.HasValue())
+            try
             {
-                return CanExecuteDelegate();
+                if (CanExecuteDelegate.HasValue())
+                {
+                    return CanExecuteDelegate();
+                }
+            }
+            catch (Exception ex)
+            {
+                ExceptionHandler.ForceExecuteOrDefault(ex);
             }
 
             return true;
@@ -35,9 +45,16 @@ namespace Sels.WPF.Core.Components.Command.DelegateCommand
 
         public void Execute(object parameter)
         {
-            if (CanExecute(parameter))
+            try
             {
-                ExecuteDelegate();
+                if (CanExecute(parameter))
+                {
+                    ExecuteDelegate();
+                }
+            }
+            catch (Exception ex)
+            {
+                ExceptionHandler.ForceExecuteOrDefault(ex);
             }
 
             RaiseCanExecuteChanged();
@@ -54,22 +71,31 @@ namespace Sels.WPF.Core.Components.Command.DelegateCommand
         // Properties
         public Predicate<TParameter> CanExecuteDelegate { get; set; }
         public Action<TParameter> ExecuteDelegate { get; set; }
+        public Action<Exception> ExceptionHandler { get; set; }
 
         // Events
         public event EventHandler CanExecuteChanged = delegate { };
-        public DelegateCommand(Action<TParameter> executeDelegate, Predicate<TParameter> canExecuteDelegate = null)
+        public DelegateCommand(Action<TParameter> executeDelegate, Predicate<TParameter> canExecuteDelegate = null, Action<Exception> exceptionHandler = null)
         {
             executeDelegate.ValidateVariable(nameof(executeDelegate));
 
             ExecuteDelegate = executeDelegate;
             CanExecuteDelegate = canExecuteDelegate;
+            ExceptionHandler = exceptionHandler;
         }
 
         public bool CanExecute(object parameter)
         {
-            if (CanExecuteDelegate.HasValue())
+            try
             {
-                return CanExecuteDelegate((TParameter)parameter);
+                if (CanExecuteDelegate.HasValue())
+                {
+                    return CanExecuteDelegate((TParameter)parameter);
+                }
+            }
+            catch (Exception ex)
+            {
+                ExceptionHandler.ForceExecuteOrDefault(ex);
             }
 
             return true;
@@ -77,9 +103,16 @@ namespace Sels.WPF.Core.Components.Command.DelegateCommand
 
         public void Execute(object parameter)
         {
-            if (CanExecute(parameter))
+            try
             {
-                ExecuteDelegate((TParameter)parameter);
+                if (CanExecute(parameter))
+                {
+                    ExecuteDelegate((TParameter)parameter);
+                }
+            }
+            catch (Exception ex)
+            {
+                ExceptionHandler.ForceExecuteOrDefault(ex);
             }
 
             RaiseCanExecuteChanged();

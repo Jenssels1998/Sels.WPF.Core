@@ -1,4 +1,5 @@
-﻿using Sels.WPF.Core.Components.Command.DelegateCommand;
+﻿using Sels.Core.Extensions.General.Generic;
+using Sels.WPF.Core.Components.Command.DelegateCommand;
 using Sels.WPF.Core.Components.ViewModel;
 using System;
 using System.Collections.Generic;
@@ -12,6 +13,17 @@ namespace Sels.WPF.Core.Templates.Crud
     public abstract class CrudList<TObject> : BaseViewModel
     {
         // Properties
+        public bool ReadOnly {
+            get
+            {
+                return GetValue<bool>(nameof(ReadOnly));
+            }
+            set
+            {
+                SetValue(nameof(ReadOnly), value, (x, y) => { if (x) RaisePropertyChanged(nameof(CanChange)); });
+            }
+        }
+        public bool CanChange => !ReadOnly;
         public TObject SelectedObject {
             get
             {
@@ -19,7 +31,7 @@ namespace Sels.WPF.Core.Templates.Crud
             }
             set
             {
-                SetValue(nameof(SelectedObject), value, x => RaiseSelectedObjectChanged());               
+                SetValue(nameof(SelectedObject), value, () => RaiseSelectedObjectChanged());               
             }
         }
 
@@ -36,16 +48,29 @@ namespace Sels.WPF.Core.Templates.Crud
         }
 
         // Commands
+        public ICommand DeleteObjectCommand { get; set; }
 
         public CrudList()
         {
-            
+            ReadOnly = true;
+            DeleteObjectCommand = new AsyncDelegateCommand<TObject>(DeleteObjectFromList, exceptionHandler: RaiseExceptionOccured);
         }
 
-        protected override async Task InitializeControl()
+        private Task DeleteObjectFromList(TObject objectToDelete)
         {
-            var objects = await LoadObjects();
-            Objects = new ObservableCollection<TObject>(objects);
+            try
+            {
+                if(objectToDelete != null)
+                {
+                    RaiseObjectDeleted(objectToDelete);
+                    Objects.Remove(objectToDelete);
+                }              
+            }
+            catch (Exception ex)
+            {
+                RaiseExceptionOccured(ex);          
+            }
+            return Task.CompletedTask;
         }
 
         // Events
@@ -58,11 +83,17 @@ namespace Sels.WPF.Core.Templates.Crud
             SelectedObjectChanged.Invoke(SelectedObject);
         }
 
+        public event Action<TObject> ObjectDeleted = delegate { };
+        private void RaiseObjectDeleted(TObject objectDeleted)
+        {
+            ObjectDeleted.Invoke(objectDeleted);
+        }
+
         // Abstractions
         /// <summary>
-        /// Method that should load the Objects when the page loads
+        /// Triggered when DeleteObjectCommand is called
         /// </summary>
+        /// <param name="objectToDelete">Object to be deleted</param>
         /// <returns></returns>
-        protected abstract Task<IEnumerable<TObject>> LoadObjects();
     }
 }

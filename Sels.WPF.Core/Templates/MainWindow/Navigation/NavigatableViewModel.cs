@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using Sels.Core.Extensions.Reflection.Object;
 
 namespace Sels.WPF.Core.Templates.MainWindow.Navigation
 {
@@ -23,7 +24,7 @@ namespace Sels.WPF.Core.Templates.MainWindow.Navigation
             }
             set
             {
-                SetValue(nameof(CurrentPage), value);
+                SetValue(nameof(CurrentPage), value, () => { SubscribeToExceptionOccuredEvents(CurrentPage); SubscribeToNavigatorEvents(CurrentPage); });
             }
         }
 
@@ -46,6 +47,42 @@ namespace Sels.WPF.Core.Templates.MainWindow.Navigation
             return Task.CompletedTask;
         }
 
+        private void SubscribeToExceptionOccuredEvents(BaseViewModel viewModel)
+        {
+            if (viewModel.HasValue())
+            {
+                viewModel.ExceptionOccured += ExceptionHandler;
+
+                foreach(var property in viewModel.GetProperties())
+                {
+                    var propertyValue = property.GetValue(viewModel);
+
+                    if(propertyValue.HasValue() && propertyValue is BaseViewModel subViewModel)
+                    {
+                        SubscribeToExceptionOccuredEvents(subViewModel);
+                    }
+                }
+            }
+        }
+
+        private void SubscribeToNavigatorEvents(BaseViewModel viewModel)
+        {
+            if (viewModel.HasValue() && viewModel is INavigator navigator)
+            {
+                navigator.NavigationRequest += NavigationRequestHandler;
+
+                foreach (var property in viewModel.GetProperties())
+                {
+                    var propertyValue = property.GetValue(viewModel);
+
+                    if (propertyValue.HasValue() && propertyValue is BaseViewModel subViewModel)
+                    {
+                        SubscribeToNavigatorEvents(subViewModel);
+                    }
+                }
+            }
+        }
+
         #region Navigation
         private void Navigate(string options)
         {
@@ -65,17 +102,61 @@ namespace Sels.WPF.Core.Templates.MainWindow.Navigation
 
         private void Navigate(BaseViewModel viewToNavigateTo, object context = null)
         {
-            viewToNavigateTo.ValidateVariable(nameof(viewToNavigateTo));
+            try
+            {
+                viewToNavigateTo.ValidateVariable(nameof(viewToNavigateTo));
 
-            CurrentPage = viewToNavigateTo;
+                if(viewToNavigateTo is INavigatable navigatableView)
+                {
+                    navigatableView.SetNavigationContext(context);
+                }
+
+                CurrentPage = viewToNavigateTo;
+            }
+            catch(Exception ex)
+            {
+                RaiseExceptionOccured(ex);
+            }         
         }
         #endregion
 
-        // Abstractions
-        public abstract void Initialize();
-        public abstract object ResolveNavigationContext(string contextName);
-        public abstract BaseViewModel ResolveViewModel(string viewModelName);
+        // Event Handlers
+        private void NavigationRequestHandler(string viewModelName, object context)
+        {
+            try
+            {
+                var viewModel = ResolveViewModel(viewModelName);
+                Navigate(viewModel, context);
+            }
+            catch(Exception ex)
+            {
+                RaiseExceptionOccured(ex);
+            }
+        }
 
+        // Abstractions
+        /// <summary>
+        /// Initialize view model
+        /// </summary>
+        public abstract void Initialize();
+        /// <summary>
+        /// Resolves context object by name
+        /// </summary>
+        /// <param name="contextName">Name of context</param>
+        /// <returns></returns>
+        public abstract object ResolveNavigationContext(string contextName);
+        /// <summary>
+        /// Used to resolve the view model
+        /// </summary>
+        /// <param name="viewModelName">View model to resolve</param>
+        /// <returns></returns>
+        public abstract BaseViewModel ResolveViewModel(string viewModelName);
+        /// <summary>
+        /// Resolve view model by type
+        /// </summary>
+        /// <typeparam name="TViewModel">Type of view model to resolve</typeparam>
+        /// <returns></returns>
         public abstract BaseViewModel ResolveViewModel<TViewModel>() where TViewModel : BaseViewModel;
+        public abstract void ExceptionHandler(object sender, string senderMessage, Exception exceptionToHandle);
     }
 }

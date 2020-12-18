@@ -10,6 +10,16 @@ namespace Sels.WPF.Core.Templates.Crud
     public abstract class CrudDetail<TObject> : BaseViewModel
     {
         // Properties
+        public bool ReadOnly {
+            get
+            {
+                return GetValue<bool>(nameof(ReadOnly));
+            }
+            set
+            {
+                SetValue(nameof(ReadOnly), value);
+            }
+        }
         public TObject DetailObject
         {
             get
@@ -18,7 +28,7 @@ namespace Sels.WPF.Core.Templates.Crud
             }
             set
             {
-                SetValue(nameof(DetailObject), value, x => DetailObjectChanged(value));
+                SetValue(nameof(DetailObject), value, (x,y) => DetailObjectChanged(x, value));
             }
         }
 
@@ -27,10 +37,16 @@ namespace Sels.WPF.Core.Templates.Crud
         /// Command that triggers request that the user wants to edit the current DetailObject
         /// </summary>
         public ICommand EditObjectCommand { get; }
+        /// <summary>
+        /// Command that triggers request that the user wants to delete the current DetailObject
+        /// </summary>
+        public ICommand DeleteObjectCommand { get; }
 
         public CrudDetail()
         {
-            EditObjectCommand = new DelegateCommand(RaiseEditObjectRequest);
+            EditObjectCommand = new DelegateCommand(RaiseEditObjectRequest, exceptionHandler: RaiseExceptionOccured);
+            DeleteObjectCommand = new DelegateCommand(RaiseDeleteObjectRequest, exceptionHandler: RaiseExceptionOccured);
+            ReadOnly = false;
         }
 
         // Events
@@ -38,10 +54,14 @@ namespace Sels.WPF.Core.Templates.Crud
         /// Events that gets raised when the user whats to edit the current DetailObject
         /// </summary>
         public event Action<TObject> EditObjectRequest = delegate { };
-
         private void RaiseEditObjectRequest()
         {
             EditObjectRequest.Invoke(DetailObject);
+        }
+        public event Action<TObject> DeleteObjectRequest = delegate { };
+        private void RaiseDeleteObjectRequest()
+        {
+            DeleteObjectRequest.Invoke(DetailObject);
         }
 
         // Abstractions
@@ -49,6 +69,6 @@ namespace Sels.WPF.Core.Templates.Crud
         /// Triggers when the DetailObject changes. Can be used to fetch additional information
         /// </summary>
         /// <param name="detailObjectChanged">Current DetailObject</param>
-        protected abstract void DetailObjectChanged(TObject detailObjectChanged);
+        protected abstract void DetailObjectChanged(bool wasDifferent, TObject detailObjectChanged);
     }
 }

@@ -6,6 +6,8 @@ using System.Text;
 using System.Windows.Input;
 using Sels.Core.Extensions.General.Validation;
 using System.Threading.Tasks;
+using System.Collections.ObjectModel;
+using Sels.Core.Extensions.General.Generic;
 
 namespace Sels.WPF.Core.Templates.Crud
 {
@@ -17,7 +19,7 @@ namespace Sels.WPF.Core.Templates.Crud
             {
                 return GetValue<BaseViewModel>(nameof(CurrentControl));
             }
-            private set
+            protected set
             {
                 SetValue(nameof(CurrentControl), value);
             }
@@ -58,6 +60,10 @@ namespace Sels.WPF.Core.Templates.Crud
         /// Command to trigger request that user wants to create an object
         /// </summary>
         public ICommand CreateObjectRequestCommand { get; }
+        /// <summary>
+        /// Used to refresh the current view model
+        /// </summary>
+        public ICommand RefreshCommand { get; }
 
         public CrudContainer(TListViewModel listViewModel, TDetailViewModel detailViewModel, TCreateOrUpdateViewModel createOrUpdateViewModel)
         {
@@ -69,47 +75,126 @@ namespace Sels.WPF.Core.Templates.Crud
             DetailViewModel = detailViewModel;
             CreateOrUpdateViewModel = createOrUpdateViewModel;
 
-            CreateObjectRequestCommand = new AsyncDelegateCommand(() => { return CreateOrUpdateViewModel.SetupForCreate(); });
+            CreateObjectRequestCommand = new AsyncDelegateCommand(CreateObjectRequestHandler, exceptionHandler: RaiseExceptionOccured);
+            RefreshCommand = new AsyncDelegateCommand(RefreshPage, exceptionHandler: RaiseExceptionOccured);
         }
 
         /// <summary>
         /// Code that runs when control gets rendered
         /// </summary>
         /// <returns></returns>
-        protected override Task InitializeControl()
+        protected async override Task InitializeControl()
         {
-            var task = Initialize();
+            var initTask = Initialize();
 
             ListViewModel.SelectedObjectChanged += SelectedObjectChangedHandler;
             DetailViewModel.EditObjectRequest += EditObjectRequestHandler;
+            DetailViewModel.DeleteObjectRequest += DeleteObjectRequestHandler;
             CreateOrUpdateViewModel.ObjectPersistedEvent += ObjectPersistedHandler;
+            CreateOrUpdateViewModel.CancelEditRequest += CancelEditRequestHandler;          
 
-            return task;
+            await initTask;
+            await RefreshPage();
+        }
+
+        private async Task RefreshPage()
+        {
+            var objects = await LoadObjects();
+            ListViewModel.Objects = objects.HasValue() ? new ObservableCollection<TObject>(objects) : new ObservableCollection<TObject>();
+
+            CurrentControl = null;
         }
 
         // Events Handlers
+        private Task CreateObjectRequestHandler()
+        {
+            try
+            {
+                var task = CreateOrUpdateViewModel.SetupForCreate();
+                CurrentControl = CreateOrUpdateViewModel;
+                return task;
+            }
+            catch(Exception ex)
+            {
+                RaiseExceptionOccured(ex);
+            }
+            return Task.CompletedTask;
+        }
         private void SelectedObjectChangedHandler(TObject objectChanged)
         {
-            objectChanged.ValidateVariable(nameof(objectChanged));
+            try
+            {
+                objectChanged.ValidateVariable(nameof(objectChanged));
 
-            DetailViewModel.DetailObject = objectChanged;
-            CurrentControl = DetailViewModel;
+                DetailViewModel.DetailObject = objectChanged;
+                CurrentControl = DetailViewModel;
+            }
+            catch (Exception ex)
+            {
+                RaiseExceptionOccured(ex);
+            }
         }
-
         private async void EditObjectRequestHandler(TObject objectToEdit)
         {
-            objectToEdit.ValidateVariable(nameof(objectToEdit));
+            try
+            {
+                objectToEdit.ValidateVariable(nameof(objectToEdit));
 
-            await CreateOrUpdateViewModel.SetupForUpdate(objectToEdit);
-            CurrentControl = CreateOrUpdateViewModel;
+                await CreateOrUpdateViewModel.SetupForUpdate(objectToEdit);
+                CurrentControl = CreateOrUpdateViewModel;
+            }
+            catch (Exception ex)
+            {
+                RaiseExceptionOccured(ex);
+            }
         }
-
         private void ObjectPersistedHandler(TObject objectPersisted)
         {
-            objectPersisted.ValidateVariable(nameof(objectPersisted));
+            try
+            {
+                objectPersisted.ValidateVariable(nameof(objectPersisted));
 
-            SelectedObjectChangedHandler(objectPersisted);
+                if (!ListViewModel.Objects.Contains(objectPersisted))
+                {
+                    ListViewModel.Objects.Add(objectPersisted);
+                }
+
+                SelectedObjectChangedHandler(objectPersisted);
+            }
+            catch (Exception ex)
+            {
+                RaiseExceptionOccured(ex);
+            }
         }
+        private async void CancelEditRequestHandler(TObject objectEditCanceled)
+        {
+            try
+            {
+                CurrentControl = null;
+                await CancelEdit(objectEditCanceled);                
+            }
+            catch (Exception ex)
+            {
+                RaiseExceptionOccured(ex);
+            }          
+       }
+        private async void DeleteObjectRequestHandler(TObject objectEditCanceled)
+        {
+            try
+            {              
+                var deleted = await DeleteObject(objectEditCanceled);
+
+                if (deleted)
+                {
+                    CurrentControl = null;
+                }
+            }
+            catch (Exception ex)
+            {
+                RaiseExceptionOccured(ex);
+            }
+        }
+
 
         // Abstractions
         /// <summary>
@@ -117,5 +202,22 @@ namespace Sels.WPF.Core.Templates.Crud
         /// </summary>
         /// <returns></returns>
         protected abstract Task Initialize();
+        /// <summary>
+        /// Method that should load the Objects when the page loads
+        /// </summary>
+        /// <returns></returns>
+        protected abstract Task<IEnumerable<TObject>> LoadObjects();
+        /// <summary>
+        /// Used to cancel the editing of the supplied object.
+        /// </summary>
+        /// <param name="objectEditCanceled">Object that was cancelled editing</param>
+        /// <returns></returns>
+        protected abstract Task CancelEdit(TObject objectEditCanceled);
+        /// <summary>
+        /// Used to delete the supplied object
+        /// </summary>
+        /// <param name="objectToDelete">Object to delete</param>
+        /// <returns>Was object deleted</returns>
+        protected abstract Task<bool> DeleteObject(TObject objectToDelete);
     }
 }

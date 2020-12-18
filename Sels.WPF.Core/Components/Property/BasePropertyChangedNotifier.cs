@@ -28,6 +28,13 @@ namespace Sels.WPF.Core.Components.Property
                 PropertyChanged.Invoke(this, new PropertyChangedEventArgs(propertyThatChanged.Name));
             }
         }
+
+        public void RaisePropertyChanged(string propertyThatChanged)
+        {
+            propertyThatChanged.ValidateVariable(nameof(propertyThatChanged));
+
+            RaisePropertyChanged(this.GetPropertyInfo(propertyThatChanged));
+        }
         #endregion
 
 
@@ -45,20 +52,22 @@ namespace Sels.WPF.Core.Components.Property
             }
         }
 
-        public T SetValue<T>(PropertyInfo sourceProperty, T value, Action<PropertyInfo> changedAction = null)
+        public T SetValue<T>(PropertyInfo sourceProperty, T value, Action<bool, PropertyInfo> changedAction = null)
         {
             sourceProperty.ValidateVariable(nameof(sourceProperty));
 
             if (sourceProperty.CanAssign<T>())
             {
                 var propertyValue = sourceProperty.GetValue<T>(this);
+                bool wasChanged = false;
 
                 if (propertyValue == null || !propertyValue.Equals(value))
                 {
                     _propertyValues.AddValue(sourceProperty, value);
                     RaisePropertyChanged(sourceProperty);
-                    changedAction.InvokeOrDefault(sourceProperty);
+                    wasChanged = true;
                 }
+                changedAction.InvokeOrDefault(wasChanged, sourceProperty);
             }
             else
             {
@@ -68,6 +77,11 @@ namespace Sels.WPF.Core.Components.Property
             return value;
         }
 
+        public T SetValue<T>(PropertyInfo sourceProperty, T value, Action changedAction)
+        {
+            return SetValue<T>(sourceProperty, value, (x, y) => changedAction());
+        }
+
         public T GetValue<T>(string propertyName)
         {
             propertyName.ValidateVariable(nameof(propertyName));
@@ -75,10 +89,15 @@ namespace Sels.WPF.Core.Components.Property
             return GetValue<T>(this.GetPropertyInfo(propertyName));
         }
 
-        public T SetValue<T>(string propertyName, T value, Action<PropertyInfo> changedAction = null)
+        public T SetValue<T>(string propertyName, T value, Action<bool, PropertyInfo> changedAction = null)
         {
             propertyName.ValidateVariable(nameof(propertyName));
 
+            return SetValue(this.GetPropertyInfo(propertyName), value, changedAction);
+        }
+
+        public T SetValue<T>(string propertyName, T value, Action changedAction)
+        {
             return SetValue(this.GetPropertyInfo(propertyName), value, changedAction);
         }
     }
