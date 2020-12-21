@@ -58,6 +58,9 @@ namespace Sels.WPF.Core.Templates.Crud
         {
             EditObjectRequest.Invoke(DetailObject);
         }
+        /// <summary>
+        /// Events that gets raised when the user whats to delete the current DetailObject
+        /// </summary>
         public event Action<TObject> DeleteObjectRequest = delegate { };
         private void RaiseDeleteObjectRequest()
         {

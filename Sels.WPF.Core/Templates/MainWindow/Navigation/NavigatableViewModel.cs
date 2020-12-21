@@ -17,14 +17,14 @@ namespace Sels.WPF.Core.Templates.MainWindow.Navigation
         private const char NavigateOptionSplit = ',';
 
         // Properties       
-        public BaseViewModel CurrentPage {
+        public BaseViewModel CurrentControl {
             get
             {
-                return GetValue<BaseViewModel>(nameof(CurrentPage));
+                return GetValue<BaseViewModel>(nameof(CurrentControl));
             }
             set
             {
-                SetValue(nameof(CurrentPage), value, () => { SubscribeToExceptionOccuredEvents(CurrentPage); SubscribeToNavigatorEvents(CurrentPage); });
+                SetValue(nameof(CurrentControl), value, () => { SubscribeToExceptionOccuredEvents(CurrentControl); SubscribeToNavigatorEvents(CurrentControl); });
             }
         }
 
@@ -111,7 +111,7 @@ namespace Sels.WPF.Core.Templates.MainWindow.Navigation
                     navigatableView.SetNavigationContext(context);
                 }
 
-                CurrentPage = viewToNavigateTo;
+                CurrentControl = viewToNavigateTo;
             }
             catch(Exception ex)
             {

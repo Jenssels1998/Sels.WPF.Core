@@ -5,13 +5,23 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using Sels.Core.Extensions.Execution.Linq;
 
 namespace Sels.WPF.Core.Components.ViewModel
 {
     public abstract class BaseViewModel : BasePropertyChangedNotifier
     {
         // Fields
-        private bool _isInitialized = false;
+        public bool Initialized {
+            get
+            {
+                return GetValue<bool>(nameof(Initialized));
+            }
+            protected set
+            {
+                SetValue(nameof(Initialized), value);
+            }
+        }
 
         // Commands
         /// <summary>
@@ -21,8 +31,68 @@ namespace Sels.WPF.Core.Components.ViewModel
 
         public BaseViewModel()
         {
-            InitializeControlCommandAsync = new AsyncDelegateCommand(() => { var task = InitializeControl(); _isInitialized = true; return task; }, () => !_isInitialized);
+            InitializeControlCommandAsync = CreateAsyncCommand(() => { var task = InitializeControl(); Initialized = true; return task; }, () => !Initialized, affectedProperties: nameof(Initialized));
         }
+
+        #region Command Creation
+
+        public ICommand CreateCommand(Action executeDelegate, Func<bool> canExecuteDelegate = null, Action<Exception> exceptionHandler = null, params string[] affectedProperties)
+        {
+            var command = new DelegateCommand(executeDelegate, canExecuteDelegate, exceptionHandler ?? RaiseExceptionOccured);
+
+            affectedProperties.Execute(x => SubscribeToPropertyChanged<object>(x, (wasChanged, value) => command.RaiseCanExecuteChanged()));
+
+            return command;
+        }
+
+        public ICommand CreateCommand<TParameter>(Action<TParameter> executeDelegate, Predicate<TParameter> canExecuteDelegate = null, Action<Exception> exceptionHandler = null, params string[] affectedProperties)
+        {
+            var command = new DelegateCommand<TParameter>(executeDelegate, canExecuteDelegate, exceptionHandler ?? RaiseExceptionOccured);
+
+            affectedProperties.Execute(x => SubscribeToPropertyChanged<object>(x, (wasChanged, value) => command.RaiseCanExecuteChanged()));
+
+            return command;
+        }
+
+        public ICommand CreateAsyncCommand(Func<Task> executeDelegate, Func<bool> canExecuteDelegate = null, Action<Exception> exceptionHandler = null, params string[] affectedProperties)
+        {
+            var command = new AsyncDelegateCommand(executeDelegate, canExecuteDelegate, exceptionHandler ?? RaiseExceptionOccured);
+
+            affectedProperties.Execute(x => SubscribeToPropertyChanged<object>(x, (wasChanged, value) => command.RaiseCanExecuteChanged()));
+
+            return command;
+        }
+
+        public ICommand CreateAsyncCommand<TParameter>(Func<TParameter, Task> executeDelegate, Predicate<TParameter> canExecuteDelegate = null, Action<Exception> exceptionHandler = null, params string[] affectedProperties)
+        {
+            var command = new AsyncDelegateCommand<TParameter>(executeDelegate, canExecuteDelegate, exceptionHandler ?? RaiseExceptionOccured);
+
+            affectedProperties.Execute(x => SubscribeToPropertyChanged<object>(x, (wasChanged, value) => command.RaiseCanExecuteChanged()));
+
+            return command;
+        }
+
+        public ICommand CreateCommand(Action executeDelegate, Func<bool> canExecuteDelegate = null, params string[] affectedProperties)
+        {
+            return CreateCommand(executeDelegate, canExecuteDelegate, null, affectedProperties);
+        }
+
+        public ICommand CreateCommand<TParameter>(Action<TParameter> executeDelegate, Predicate<TParameter> canExecuteDelegate = null, params string[] affectedProperties)
+        {
+            return CreateCommand(executeDelegate, canExecuteDelegate, null, affectedProperties);
+        }
+
+        public ICommand CreateAsyncCommand(Func<Task> executeDelegate, Func<bool> canExecuteDelegate = null, params string[] affectedProperties)
+        {
+            return CreateAsyncCommand(executeDelegate, canExecuteDelegate, null, affectedProperties);
+        }
+
+        public ICommand CreateAsyncCommand<TParameter>(Func<TParameter, Task> executeDelegate, Predicate<TParameter> canExecuteDelegate = null, params string[] affectedProperties)
+        {
+            return CreateAsyncCommand(executeDelegate, canExecuteDelegate, null, affectedProperties);
+        }
+
+        #endregion
 
         // Events
         /// <summary>
@@ -39,11 +109,14 @@ namespace Sels.WPF.Core.Components.ViewModel
             ExceptionOccured.Invoke(this, message, exception);
         }
 
-        // Abstractions
+        // Virtuals
         /// <summary>
         /// Can be used to perform actions when the control gets loaded
         /// </summary>
         /// <returns></returns>
-        protected abstract Task InitializeControl();
+        protected virtual Task InitializeControl()
+        {
+            return Task.CompletedTask;
+        }
     }
 }

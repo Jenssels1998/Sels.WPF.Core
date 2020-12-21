@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Text;
 using Sels.Core.Extensions.Reflection.Object;
 using Sels.Core.Extensions.Object.ItemContainer;
+using Sels.Core.Extensions.Execution.Linq;
 
 namespace Sels.WPF.Core.Components.Property
 {
@@ -14,12 +15,12 @@ namespace Sels.WPF.Core.Components.Property
     {
         // Fields
         private readonly Dictionary<PropertyInfo, object> _propertyValues = new Dictionary<PropertyInfo, object>();
-
+        private readonly Dictionary<PropertyInfo, List<Action<bool, object>>> _propertySubscribers = new Dictionary<PropertyInfo, List<Action<bool, object>>>();
 
         #region INotifyPropertyChanged
         public event PropertyChangedEventHandler PropertyChanged = delegate { };
 
-        public void RaisePropertyChanged(PropertyInfo propertyThatChanged)
+        protected void RaisePropertyChanged(PropertyInfo propertyThatChanged)
         {
             propertyThatChanged.ValidateVariable(nameof(propertyThatChanged));
 
@@ -29,7 +30,7 @@ namespace Sels.WPF.Core.Components.Property
             }
         }
 
-        public void RaisePropertyChanged(string propertyThatChanged)
+        protected void RaisePropertyChanged(string propertyThatChanged)
         {
             propertyThatChanged.ValidateVariable(nameof(propertyThatChanged));
 
@@ -37,8 +38,8 @@ namespace Sels.WPF.Core.Components.Property
         }
         #endregion
 
-
-        public T GetValue<T>(PropertyInfo sourceProperty)
+        #region GetAndSet
+        protected T GetValue<T>(PropertyInfo sourceProperty)
         {
             sourceProperty.ValidateVariable(nameof(sourceProperty));
 
@@ -51,8 +52,44 @@ namespace Sels.WPF.Core.Components.Property
                 throw new InvalidOperationException($"Could not get value on property <{sourceProperty.Name}> because value type <{typeof(T)}> is not assignable from <{sourceProperty.PropertyType}>");
             }
         }
+        protected T GetValue<T>(string propertyName)
+        {
+            propertyName.ValidateVariable(nameof(propertyName));
 
-        public T SetValue<T>(PropertyInfo sourceProperty, T value, Action<bool, PropertyInfo> changedAction = null)
+            return GetValue<T>(this.GetPropertyInfo(propertyName));
+        }
+
+        //protected T GetValue<T>(string propertyName, Func<T> customGetter, Action<bool, T> whenChangedAction = null)
+        //{
+        //    propertyName.ValidateVariable(nameof(propertyName));
+        //    customGetter.ValidateVariable(nameof(customGetter));
+
+        //    return GetValue(this.GetPropertyInfo(propertyName), customGetter, whenChangedAction);
+        //}
+
+        //protected T GetValue<T>(PropertyInfo sourceProperty, Func<T> customGetter, Action<bool, T> whenChangedAction = null)
+        //{
+        //    sourceProperty.ValidateVariable(nameof(sourceProperty));
+        //    customGetter.ValidateVariable(nameof(customGetter));
+
+        //    var getterValue = customGetter();
+
+        //    var previousValue = GetValue<T>(sourceProperty);
+
+        //    var wasChanged = false;
+        //    if (getterValue == null || !previousValue.Equals(getterValue))
+        //    {
+        //        RaisePropertyChanged(sourceProperty);
+        //        wasChanged = true;
+        //    }
+
+        //    whenChangedAction.InvokeOrDefault(wasChanged, getterValue);
+        //    _propertySubscribers.IfContains(sourceProperty, actions => actions.InvokeOrDefault(wasChanged, getterValue));
+
+        //    return getterValue;
+        //}
+
+        protected T SetValue<T>(PropertyInfo sourceProperty, T value, Action<bool, T> whenChangedAction, params PropertyInfo[] affectedProperties)
         {
             sourceProperty.ValidateVariable(nameof(sourceProperty));
 
@@ -66,8 +103,12 @@ namespace Sels.WPF.Core.Components.Property
                     _propertyValues.AddValue(sourceProperty, value);
                     RaisePropertyChanged(sourceProperty);
                     wasChanged = true;
+
+                    affectedProperties.Execute(x => RaisePropertyChanged(x));
                 }
-                changedAction.InvokeOrDefault(wasChanged, sourceProperty);
+
+                whenChangedAction.InvokeOrDefault(wasChanged, value);
+                _propertySubscribers.IfContains(sourceProperty, actions => actions.InvokeOrDefault(wasChanged, value));
             }
             else
             {
@@ -77,28 +118,43 @@ namespace Sels.WPF.Core.Components.Property
             return value;
         }
 
-        public T SetValue<T>(PropertyInfo sourceProperty, T value, Action changedAction)
+        protected T SetValue<T>(PropertyInfo sourceProperty, T value, Action changedAction, params PropertyInfo[] affectedProperties)
         {
-            return SetValue<T>(sourceProperty, value, (x, y) => changedAction());
+            return SetValue<T>(sourceProperty, value, (x, y) => changedAction(), affectedProperties);
         }
 
-        public T GetValue<T>(string propertyName)
-        {
-            propertyName.ValidateVariable(nameof(propertyName));
-
-            return GetValue<T>(this.GetPropertyInfo(propertyName));
-        }
-
-        public T SetValue<T>(string propertyName, T value, Action<bool, PropertyInfo> changedAction = null)
+        protected T SetValue<T>(string propertyName, T value, Action<bool, T> whenChangedAction, params string[] affectedProperties)
         {
             propertyName.ValidateVariable(nameof(propertyName));
 
-            return SetValue(this.GetPropertyInfo(propertyName), value, changedAction);
+            return SetValue(this.GetPropertyInfo(propertyName), value, whenChangedAction, affectedProperties.SelectOrDefault(x => this.GetPropertyInfo(x)));
         }
 
-        public T SetValue<T>(string propertyName, T value, Action changedAction)
+        protected T SetValue<T>(string propertyName, T value, Action changedAction, params string[] affectedProperties)
         {
-            return SetValue(this.GetPropertyInfo(propertyName), value, changedAction);
+            return SetValue(this.GetPropertyInfo(propertyName), value, changedAction, affectedProperties.SelectOrDefault(x => this.GetPropertyInfo(x)));
         }
+        protected T SetValue<T>(string propertyName, T value, params string[] affectedProperties)
+        {
+            return SetValue(this.GetPropertyInfo(propertyName), value, () => { }, affectedProperties.SelectOrDefault(x => this.GetPropertyInfo(x)));
+        }
+        #endregion
+
+        #region WhenChanged
+        protected void SubscribeToPropertyChanged<T>(string propertyName, Action<bool, T> whenChangedAction)
+        {
+            propertyName.ValidateVariable(nameof(propertyName));
+            whenChangedAction.ValidateVariable(nameof(whenChangedAction));
+            SubscribeToPropertyChanged<T>(this.GetPropertyInfo(propertyName), whenChangedAction);
+        }
+
+        protected void SubscribeToPropertyChanged<T>(PropertyInfo property, Action<bool, T> whenChangedAction)
+        {
+            property.ValidateVariable(nameof(property));
+            whenChangedAction.ValidateVariable(nameof(whenChangedAction));
+
+            _propertySubscribers.AddValueToList(property, (wasDifferent, value) => whenChangedAction(wasDifferent,(T)value));
+        }
+        #endregion
     }
 }

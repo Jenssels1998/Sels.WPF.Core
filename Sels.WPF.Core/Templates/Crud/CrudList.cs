@@ -20,7 +20,7 @@ namespace Sels.WPF.Core.Templates.Crud
             }
             set
             {
-                SetValue(nameof(ReadOnly), value, (x, y) => { if (x) RaisePropertyChanged(nameof(CanChange)); });
+                SetValue(nameof(ReadOnly), value, affectedProperties: nameof(CanChange));
             }
         }
         public bool CanChange => !ReadOnly;
@@ -53,7 +53,7 @@ namespace Sels.WPF.Core.Templates.Crud
         public CrudList()
         {
             ReadOnly = true;
-            DeleteObjectCommand = new AsyncDelegateCommand<TObject>(DeleteObjectFromList, exceptionHandler: RaiseExceptionOccured);
+            DeleteObjectCommand = CreateAsyncCommand<TObject>(DeleteObjectFromList, x => x.HasValue(), nameof(SelectedObject), nameof(Objects));
         }
 
         private Task DeleteObjectFromList(TObject objectToDelete)
@@ -82,18 +82,13 @@ namespace Sels.WPF.Core.Templates.Crud
         {
             SelectedObjectChanged.Invoke(SelectedObject);
         }
-
+        /// <summary>
+        /// Raised when an object gets deleted from the list
+        /// </summary>
         public event Action<TObject> ObjectDeleted = delegate { };
         private void RaiseObjectDeleted(TObject objectDeleted)
         {
             ObjectDeleted.Invoke(objectDeleted);
         }
-
-        // Abstractions
-        /// <summary>
-        /// Triggered when DeleteObjectCommand is called
-        /// </summary>
-        /// <param name="objectToDelete">Object to be deleted</param>
-        /// <returns></returns>
     }
 }

@@ -8,6 +8,7 @@ using Sels.Core.Extensions.General.Validation;
 using System.Threading.Tasks;
 using System.Collections.ObjectModel;
 using Sels.Core.Extensions.General.Generic;
+using System.Reflection;
 
 namespace Sels.WPF.Core.Templates.Crud
 {
@@ -79,10 +80,6 @@ namespace Sels.WPF.Core.Templates.Crud
             RefreshCommand = new AsyncDelegateCommand(RefreshPage, exceptionHandler: RaiseExceptionOccured);
         }
 
-        /// <summary>
-        /// Code that runs when control gets rendered
-        /// </summary>
-        /// <returns></returns>
         protected async override Task InitializeControl()
         {
             var initTask = Initialize();
@@ -90,6 +87,7 @@ namespace Sels.WPF.Core.Templates.Crud
             ListViewModel.SelectedObjectChanged += SelectedObjectChangedHandler;
             DetailViewModel.EditObjectRequest += EditObjectRequestHandler;
             DetailViewModel.DeleteObjectRequest += DeleteObjectRequestHandler;
+            CreateOrUpdateViewModel.DeleteObjectRequest += DeleteObjectRequestHandler;
             CreateOrUpdateViewModel.ObjectPersistedEvent += ObjectPersistedHandler;
             CreateOrUpdateViewModel.CancelEditRequest += CancelEditRequestHandler;          
 
@@ -102,6 +100,14 @@ namespace Sels.WPF.Core.Templates.Crud
             var objects = await LoadObjects();
             ListViewModel.Objects = objects.HasValue() ? new ObservableCollection<TObject>(objects) : new ObservableCollection<TObject>();
 
+            ResetSelection();
+        }
+
+        private void ResetSelection()
+        {
+            ListViewModel.SelectedObject = default;
+            DetailViewModel.DetailObject = default;
+            CreateOrUpdateViewModel.Object = default;
             CurrentControl = null;
         }
 
@@ -120,21 +126,22 @@ namespace Sels.WPF.Core.Templates.Crud
             }
             return Task.CompletedTask;
         }
-        private void SelectedObjectChangedHandler(TObject objectChanged)
+        protected void SelectedObjectChangedHandler(TObject objectChanged)
         {
             try
             {
-                objectChanged.ValidateVariable(nameof(objectChanged));
-
-                DetailViewModel.DetailObject = objectChanged;
-                CurrentControl = DetailViewModel;
+                if(objectChanged != null)
+                {
+                    DetailViewModel.DetailObject = objectChanged;
+                    CurrentControl = DetailViewModel;
+                }             
             }
             catch (Exception ex)
             {
                 RaiseExceptionOccured(ex);
             }
         }
-        private async void EditObjectRequestHandler(TObject objectToEdit)
+        protected async void EditObjectRequestHandler(TObject objectToEdit)
         {
             try
             {
@@ -148,7 +155,7 @@ namespace Sels.WPF.Core.Templates.Crud
                 RaiseExceptionOccured(ex);
             }
         }
-        private void ObjectPersistedHandler(TObject objectPersisted)
+        protected void ObjectPersistedHandler(TObject objectPersisted)
         {
             try
             {
@@ -166,19 +173,20 @@ namespace Sels.WPF.Core.Templates.Crud
                 RaiseExceptionOccured(ex);
             }
         }
-        private async void CancelEditRequestHandler(TObject objectEditCanceled)
+        protected async void CancelEditRequestHandler(bool wasEdit, TObject objectEditCanceled)
         {
             try
             {
-                CurrentControl = null;
-                await CancelEdit(objectEditCanceled);                
+                ResetSelection();
+                if (wasEdit)
+                    await CancelEdit(objectEditCanceled);                
             }
             catch (Exception ex)
             {
                 RaiseExceptionOccured(ex);
             }          
        }
-        private async void DeleteObjectRequestHandler(TObject objectEditCanceled)
+        protected async void DeleteObjectRequestHandler(TObject objectEditCanceled)
         {
             try
             {              
@@ -195,6 +203,35 @@ namespace Sels.WPF.Core.Templates.Crud
             }
         }
 
+        // Virtuals
+        /// <summary>
+        /// Used to cancel the editing of the supplied object.
+        /// </summary>
+        /// <param name="objectEditCanceled">Object that was cancelled editing</param>
+        /// <returns></returns>
+        protected virtual async Task CancelEdit(TObject objectEditCanceled) {
+            try
+            {
+                var objectTask = RefreshObject(objectEditCanceled);
+
+                // Removed canceled edit object
+                ListViewModel.Objects.Remove(objectEditCanceled);
+
+                // Get the object so we omit any changes
+                var refreshedObject = await objectTask;
+
+                // Add back to list
+                ListViewModel.Objects.Add(refreshedObject);
+
+                // Setup detail viewmodel and change current view
+                DetailViewModel.DetailObject = refreshedObject;
+                CurrentControl = DetailViewModel;
+            }
+            catch (Exception ex)
+            {
+                RaiseExceptionOccured(ex);
+            }            
+        }
 
         // Abstractions
         /// <summary>
@@ -208,11 +245,11 @@ namespace Sels.WPF.Core.Templates.Crud
         /// <returns></returns>
         protected abstract Task<IEnumerable<TObject>> LoadObjects();
         /// <summary>
-        /// Used to cancel the editing of the supplied object.
+        /// Used to refresh any changes done to object
         /// </summary>
-        /// <param name="objectEditCanceled">Object that was cancelled editing</param>
+        /// <param name="objectToRefresh">Object that needs to be refreshed</param>
         /// <returns></returns>
-        protected abstract Task CancelEdit(TObject objectEditCanceled);
+        protected abstract Task<TObject> RefreshObject(TObject objectToRefresh);
         /// <summary>
         /// Used to delete the supplied object
         /// </summary>

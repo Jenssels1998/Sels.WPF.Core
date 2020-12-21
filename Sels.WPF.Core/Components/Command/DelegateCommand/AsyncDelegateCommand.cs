@@ -90,7 +90,12 @@ namespace Sels.WPF.Core.Components.Command.DelegateCommand
             {
                 if (CanExecuteDelegate.HasValue())
                 {
-                    return CanExecuteDelegate((TParameter)parameter);
+                    if(parameter is TParameter typedParameter)
+                    {
+                        return CanExecuteDelegate(typedParameter);
+                    }
+
+                    return false;
                 }
             }
             catch (Exception ex)
@@ -107,7 +112,7 @@ namespace Sels.WPF.Core.Components.Command.DelegateCommand
             {
                 if (CanExecute(parameter))
                 {
-                    await ExecuteDelegate((TParameter)parameter);
+                    await ExecuteDelegate((TParameter) parameter);
                 }
             }
             catch (Exception ex)
