@@ -88,19 +88,22 @@ namespace Sels.WPF.Core.Templates.Crud
         {
             IsEdit = true;
             ClearState();
-            await InitializeForEdit(objectToEdit);
             Object = objectToEdit;
+            await InitializeForEdit(objectToEdit);
         }
 
         private async Task SaveObject()
         {
             ValidationErrors.Clear();
+
+            PreSaveAction(Object);
+
             var errors = await ValidateObject(Object);
 
             if (!errors.HasValue())
             {
-                await PersistObject(Object);
-                RaiseObjectPersisted();
+                var persistedObject = await PersistObject(Object);
+                RaiseObjectPersisted(persistedObject);
             }
             else
             {
@@ -118,10 +121,10 @@ namespace Sels.WPF.Core.Templates.Crud
         /// <summary>
         /// Events that triggers when an object was persisted
         /// </summary>
-        public event Action<TObject> ObjectPersistedEvent = delegate { };
-        private void RaiseObjectPersisted()
+        public event Action<bool, TObject, TObject> ObjectPersistedEvent = delegate { };
+        private void RaiseObjectPersisted(TObject newObject)
         {
-            ObjectPersistedEvent.Invoke(Object);
+            ObjectPersistedEvent.Invoke(IsCreate, Object, newObject);
         }
         /// <summary>
         /// Raised when used wants to cancel editing the current object
@@ -138,6 +141,16 @@ namespace Sels.WPF.Core.Templates.Crud
         private void RaiseDeleteObjectRequest()
         {
             DeleteObjectRequest.Invoke(Object);
+        }
+
+        // Virtuals
+        /// <summary>
+        /// Executed before validation and persistance of object
+        /// </summary>
+        /// <param name="objectToPersist">Object to save</param>
+        protected virtual void PreSaveAction(TObject objectToPersist)
+        {
+
         }
 
         // Abstractions
@@ -163,6 +176,6 @@ namespace Sels.WPF.Core.Templates.Crud
         /// </summary>
         /// <param name="objectToPersist">Object that needs to be persisted</param>
         /// <returns></returns>
-        protected abstract Task PersistObject(TObject objectToPersist);
+        protected abstract Task<TObject> PersistObject(TObject objectToPersist);
     }
 }

@@ -8,6 +8,8 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using Sels.Core.Extensions.Reflection.Object;
+using System.Collections.ObjectModel;
+using System.Linq;
 
 namespace Sels.WPF.Core.Templates.MainWindow.Navigation
 {
@@ -27,6 +29,16 @@ namespace Sels.WPF.Core.Templates.MainWindow.Navigation
                 SetValue(nameof(CurrentControl), value, () => { SubscribeToExceptionOccuredEvents(CurrentControl); SubscribeToNavigatorEvents(CurrentControl); });
             }
         }
+        public ObservableCollection<(BaseViewModel ViewModel, object Context)> NavigationHistory {
+            get
+            {
+                return GetValue<ObservableCollection<(BaseViewModel ViewModel, object Context)>>(nameof(NavigationHistory));
+            }
+            set
+            {
+                SetValue(nameof(NavigationHistory), value);
+            }
+        }
 
         // Commands
         public ICommand InitializeCommand { get; }
@@ -34,8 +46,13 @@ namespace Sels.WPF.Core.Templates.MainWindow.Navigation
 
         public NavigatableViewModel()
         {
+            NavigationHistory = new ObservableCollection<(BaseViewModel ViewModel, object Context)>();
+
             // Setup commands
-            NavigateCommand = new DelegateCommand<string>(Navigate);
+            NavigateCommand = CreateCommand<string>(Navigate);
+
+            // Setup Exception Handler on main window
+            this.ExceptionOccured += ExceptionHandler;
         }
 
         protected override Task InitializeControl()
@@ -67,9 +84,12 @@ namespace Sels.WPF.Core.Templates.MainWindow.Navigation
 
         private void SubscribeToNavigatorEvents(BaseViewModel viewModel)
         {
-            if (viewModel.HasValue() && viewModel is INavigator navigator)
+            if (viewModel.HasValue())
             {
-                navigator.NavigationRequest += NavigationRequestHandler;
+                if(viewModel is INavigator navigator)
+                {
+                    navigator.NavigationRequest += NavigationRequestHandler;
+                }                
 
                 foreach (var property in viewModel.GetProperties())
                 {
@@ -78,6 +98,27 @@ namespace Sels.WPF.Core.Templates.MainWindow.Navigation
                     if (propertyValue.HasValue() && propertyValue is BaseViewModel subViewModel)
                     {
                         SubscribeToNavigatorEvents(subViewModel);
+                    }
+                }
+            }
+        }
+
+        private void SetNavigationContext(BaseViewModel viewModel, object context)
+        {
+            if (viewModel.HasValue())
+            {
+                if (viewModel is INavigatable navigatable)
+                {
+                    navigatable.SetNavigationContext(context);
+                }
+
+                foreach (var property in viewModel.GetProperties())
+                {
+                    var propertyValue = property.GetValue(viewModel);
+
+                    if (propertyValue.HasValue() && propertyValue is BaseViewModel subViewModel)
+                    {
+                        SetNavigationContext(subViewModel, context);
                     }
                 }
             }
@@ -106,12 +147,19 @@ namespace Sels.WPF.Core.Templates.MainWindow.Navigation
             {
                 viewToNavigateTo.ValidateVariable(nameof(viewToNavigateTo));
 
-                if(viewToNavigateTo is INavigatable navigatableView)
+                var lastNavigation = NavigationHistory.LastOrDefault();
+                                
+                CurrentControl = viewToNavigateTo;
+
+                SetNavigationContext(CurrentControl, context);
+
+                // Manually trigger initialize if previous navigation is same as current requested view model. Otherwise the initialize won't trigger because view was already rendered
+                if(lastNavigation.ViewModel?.GetType() == viewToNavigateTo.GetType())
                 {
-                    navigatableView.SetNavigationContext(context);
+                    viewToNavigateTo.InitializeControlCommandAsync.Execute(null);
                 }
 
-                CurrentControl = viewToNavigateTo;
+                NavigationHistory.Add((viewToNavigateTo, context));
             }
             catch(Exception ex)
             {

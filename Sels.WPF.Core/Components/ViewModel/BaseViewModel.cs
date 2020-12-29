@@ -36,7 +36,7 @@ namespace Sels.WPF.Core.Components.ViewModel
 
         #region Command Creation
 
-        public ICommand CreateCommand(Action executeDelegate, Func<bool> canExecuteDelegate = null, Action<Exception> exceptionHandler = null, params string[] affectedProperties)
+        public ICommand CreateCommand(Action executeDelegate, Action<Exception> exceptionHandler, Func<bool> canExecuteDelegate = null, params string[] affectedProperties)
         {
             var command = new DelegateCommand(executeDelegate, canExecuteDelegate, exceptionHandler ?? RaiseExceptionOccured);
 
@@ -45,7 +45,7 @@ namespace Sels.WPF.Core.Components.ViewModel
             return command;
         }
 
-        public ICommand CreateCommand<TParameter>(Action<TParameter> executeDelegate, Predicate<TParameter> canExecuteDelegate = null, Action<Exception> exceptionHandler = null, params string[] affectedProperties)
+        public ICommand CreateCommand<TParameter>(Action<TParameter> executeDelegate, Action<Exception> exceptionHandler, Predicate<TParameter> canExecuteDelegate = null, params string[] affectedProperties)
         {
             var command = new DelegateCommand<TParameter>(executeDelegate, canExecuteDelegate, exceptionHandler ?? RaiseExceptionOccured);
 
@@ -54,7 +54,7 @@ namespace Sels.WPF.Core.Components.ViewModel
             return command;
         }
 
-        public ICommand CreateAsyncCommand(Func<Task> executeDelegate, Func<bool> canExecuteDelegate = null, Action<Exception> exceptionHandler = null, params string[] affectedProperties)
+        public ICommand CreateAsyncCommand(Func<Task> executeDelegate, Action<Exception> exceptionHandler, Func<bool> canExecuteDelegate = null, params string[] affectedProperties)
         {
             var command = new AsyncDelegateCommand(executeDelegate, canExecuteDelegate, exceptionHandler ?? RaiseExceptionOccured);
 
@@ -74,17 +74,17 @@ namespace Sels.WPF.Core.Components.ViewModel
 
         public ICommand CreateCommand(Action executeDelegate, Func<bool> canExecuteDelegate = null, params string[] affectedProperties)
         {
-            return CreateCommand(executeDelegate, canExecuteDelegate, null, affectedProperties);
+            return CreateCommand(executeDelegate, null, canExecuteDelegate, affectedProperties);
         }
 
         public ICommand CreateCommand<TParameter>(Action<TParameter> executeDelegate, Predicate<TParameter> canExecuteDelegate = null, params string[] affectedProperties)
         {
-            return CreateCommand(executeDelegate, canExecuteDelegate, null, affectedProperties);
+            return CreateCommand(executeDelegate, null, canExecuteDelegate, affectedProperties);
         }
 
         public ICommand CreateAsyncCommand(Func<Task> executeDelegate, Func<bool> canExecuteDelegate = null, params string[] affectedProperties)
         {
-            return CreateAsyncCommand(executeDelegate, canExecuteDelegate, null, affectedProperties);
+            return CreateAsyncCommand(executeDelegate, null, canExecuteDelegate, affectedProperties);
         }
 
         public ICommand CreateAsyncCommand<TParameter>(Func<TParameter, Task> executeDelegate, Predicate<TParameter> canExecuteDelegate = null, params string[] affectedProperties)

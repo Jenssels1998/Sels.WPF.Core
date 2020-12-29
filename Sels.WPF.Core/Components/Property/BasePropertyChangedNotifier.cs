@@ -16,11 +16,12 @@ namespace Sels.WPF.Core.Components.Property
         // Fields
         private readonly Dictionary<PropertyInfo, object> _propertyValues = new Dictionary<PropertyInfo, object>();
         private readonly Dictionary<PropertyInfo, List<Action<bool, object>>> _propertySubscribers = new Dictionary<PropertyInfo, List<Action<bool, object>>>();
+        private readonly List<Action<bool, PropertyInfo, object>> _fullPropertySubscribers = new List<Action<bool, PropertyInfo, object>>();
 
         #region INotifyPropertyChanged
         public event PropertyChangedEventHandler PropertyChanged = delegate { };
 
-        protected void RaisePropertyChanged(PropertyInfo propertyThatChanged)
+        public void RaisePropertyChanged(PropertyInfo propertyThatChanged)
         {
             propertyThatChanged.ValidateVariable(nameof(propertyThatChanged));
 
@@ -30,7 +31,7 @@ namespace Sels.WPF.Core.Components.Property
             }
         }
 
-        protected void RaisePropertyChanged(string propertyThatChanged)
+        public void RaisePropertyChanged(string propertyThatChanged)
         {
             propertyThatChanged.ValidateVariable(nameof(propertyThatChanged));
 
@@ -109,6 +110,7 @@ namespace Sels.WPF.Core.Components.Property
 
                 whenChangedAction.InvokeOrDefault(wasChanged, value);
                 _propertySubscribers.IfContains(sourceProperty, actions => actions.InvokeOrDefault(wasChanged, value));
+                _fullPropertySubscribers.InvokeOrDefault(wasChanged, sourceProperty, value);
             }
             else
             {
@@ -141,19 +143,26 @@ namespace Sels.WPF.Core.Components.Property
         #endregion
 
         #region WhenChanged
-        protected void SubscribeToPropertyChanged<T>(string propertyName, Action<bool, T> whenChangedAction)
+        public void SubscribeToPropertyChanged<T>(string propertyName, Action<bool, T> whenChangedAction)
         {
             propertyName.ValidateVariable(nameof(propertyName));
             whenChangedAction.ValidateVariable(nameof(whenChangedAction));
             SubscribeToPropertyChanged<T>(this.GetPropertyInfo(propertyName), whenChangedAction);
         }
 
-        protected void SubscribeToPropertyChanged<T>(PropertyInfo property, Action<bool, T> whenChangedAction)
+        public void SubscribeToPropertyChanged<T>(PropertyInfo property, Action<bool, T> whenChangedAction)
         {
             property.ValidateVariable(nameof(property));
             whenChangedAction.ValidateVariable(nameof(whenChangedAction));
 
             _propertySubscribers.AddValueToList(property, (wasDifferent, value) => whenChangedAction(wasDifferent,(T)value));
+        }
+
+        public void SubscribeToAllPropertiesChanged(Action<bool, PropertyInfo, object> whenChangedAction)
+        {
+            whenChangedAction.ValidateVariable(nameof(whenChangedAction));
+
+            _fullPropertySubscribers.Add(whenChangedAction);
         }
         #endregion
     }

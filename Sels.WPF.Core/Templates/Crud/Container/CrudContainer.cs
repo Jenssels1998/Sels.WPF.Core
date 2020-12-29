@@ -155,18 +155,21 @@ namespace Sels.WPF.Core.Templates.Crud
                 RaiseExceptionOccured(ex);
             }
         }
-        protected void ObjectPersistedHandler(TObject objectPersisted)
+        protected void ObjectPersistedHandler(bool wasCreate, TObject oldObjectPersisted, TObject newObject)
         {
             try
             {
-                objectPersisted.ValidateVariable(nameof(objectPersisted));
+                oldObjectPersisted.ValidateVariable(nameof(oldObjectPersisted));
+                newObject.ValidateVariable(nameof(newObject));
 
-                if (!ListViewModel.Objects.Contains(objectPersisted))
+                if (!wasCreate)
                 {
-                    ListViewModel.Objects.Add(objectPersisted);
+                    ListViewModel.Objects.Remove(oldObjectPersisted);
                 }
 
-                SelectedObjectChangedHandler(objectPersisted);
+                ListViewModel.Objects.Add(newObject);
+
+                SelectedObjectChangedHandler(newObject);
             }
             catch (Exception ex)
             {

@@ -5,6 +5,8 @@ using System.Collections.Generic;
 using System.Text;
 using System.Windows.Input;
 using Sels.Core.Extensions.Execution.Linq;
+using Sels.Core.Components.Caching;
+using Sels.Core.Components.Variable.VariableActions;
 
 namespace Sels.WPF.Core.Components.Command.DelegateCommand
 {
@@ -15,6 +17,8 @@ namespace Sels.WPF.Core.Components.Command.DelegateCommand
         public Action ExecuteDelegate { get; set; }
         public Action<Exception> ExceptionHandler { get; set; }
 
+        private ValueCache<bool> InProgress { get; }
+
         // Events
         public event EventHandler CanExecuteChanged = delegate{};
         public DelegateCommand(Action executeDelegate, Func<bool> canExecuteDelegate = null, Action<Exception> exceptionHandler = null)
@@ -24,6 +28,8 @@ namespace Sels.WPF.Core.Components.Command.DelegateCommand
             ExecuteDelegate = executeDelegate;
             CanExecuteDelegate = canExecuteDelegate;
             ExceptionHandler = exceptionHandler;
+
+            InProgress = new ValueCache<bool>(() => false);
         }
 
         public bool CanExecute(object parameter)
@@ -32,7 +38,7 @@ namespace Sels.WPF.Core.Components.Command.DelegateCommand
             {
                 if (CanExecuteDelegate.HasValue())
                 {
-                    return CanExecuteDelegate();
+                    return !InProgress.Value && CanExecuteDelegate();
                 }
             }
             catch (Exception ex)
@@ -40,7 +46,7 @@ namespace Sels.WPF.Core.Components.Command.DelegateCommand
                 ExceptionHandler.ForceExecuteOrDefault(ex);
             }
 
-            return true;
+            return !InProgress.Value;
         }
 
         public void Execute(object parameter)
@@ -49,7 +55,10 @@ namespace Sels.WPF.Core.Components.Command.DelegateCommand
             {
                 if (CanExecute(parameter))
                 {
-                    ExecuteDelegate();
+                    using (new InProgressAction(x => InProgress.Set(x)))
+                    {
+                        ExecuteDelegate();
+                    }
                 }
             }
             catch (Exception ex)
@@ -73,6 +82,8 @@ namespace Sels.WPF.Core.Components.Command.DelegateCommand
         public Action<TParameter> ExecuteDelegate { get; set; }
         public Action<Exception> ExceptionHandler { get; set; }
 
+        private ValueCache<bool> InProgress { get; }
+
         // Events
         public event EventHandler CanExecuteChanged = delegate { };
         public DelegateCommand(Action<TParameter> executeDelegate, Predicate<TParameter> canExecuteDelegate = null, Action<Exception> exceptionHandler = null)
@@ -82,28 +93,29 @@ namespace Sels.WPF.Core.Components.Command.DelegateCommand
             ExecuteDelegate = executeDelegate;
             CanExecuteDelegate = canExecuteDelegate;
             ExceptionHandler = exceptionHandler;
+
+            InProgress = new ValueCache<bool>(() => false);
         }
 
         public bool CanExecute(object parameter)
         {
-            try
+            if(parameter is TParameter typedParameter)
             {
-                if (CanExecuteDelegate.HasValue())
+                try
                 {
-                    if (parameter is TParameter typedParameter)
+                    if (CanExecuteDelegate.HasValue())
                     {
-                        return CanExecuteDelegate(typedParameter);
+                       return !InProgress.Value && CanExecuteDelegate(typedParameter);
                     }
-
-                    return false;
                 }
-            }
-            catch (Exception ex)
-            {
-                ExceptionHandler.ForceExecuteOrDefault(ex);
-            }
+                catch (Exception ex)
+                {
+                    ExceptionHandler.ForceExecuteOrDefault(ex);
+                }
 
-            return true;
+                return !InProgress.Value;
+            }
+            return false;
         }
 
         public void Execute(object parameter)
@@ -112,7 +124,10 @@ namespace Sels.WPF.Core.Components.Command.DelegateCommand
             {               
                 if (CanExecute(parameter))
                 {
-                    ExecuteDelegate((TParameter)parameter);
+                    using (new InProgressAction(x => InProgress.Set(x)))
+                    {
+                        ExecuteDelegate((TParameter)parameter);
+                    }                    
                 }
             }
             catch (Exception ex)
