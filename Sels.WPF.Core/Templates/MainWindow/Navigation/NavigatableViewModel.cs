@@ -89,7 +89,12 @@ namespace Sels.WPF.Core.Templates.MainWindow.Navigation
                 if(viewModel is INavigator navigator)
                 {
                     navigator.NavigationRequest += NavigationRequestHandler;
-                }                
+                }
+
+                if (viewModel is IHomeNavigator homeNavigator)
+                {
+                    homeNavigator.HomeNavigationRequest += HomeNavigationRequestHandler;
+                }
 
                 foreach (var property in viewModel.GetProperties())
                 {
@@ -177,6 +182,18 @@ namespace Sels.WPF.Core.Templates.MainWindow.Navigation
                 Navigate(viewModel, context);
             }
             catch(Exception ex)
+            {
+                RaiseExceptionOccured(ex);
+            }
+        }
+
+        private void HomeNavigationRequestHandler()
+        {
+            try
+            {
+                Navigate(ResolveViewModel<TDefaultPage>());
+            }
+            catch (Exception ex)
             {
                 RaiseExceptionOccured(ex);
             }
