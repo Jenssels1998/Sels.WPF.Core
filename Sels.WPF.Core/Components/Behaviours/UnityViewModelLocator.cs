@@ -41,7 +41,7 @@ namespace Sels.WPF.Core.Components.Behaviours
             {
                 var splitViewModelTypeName = d.GetType().AssemblyQualifiedName.Split(TypeSplitChar);
                 splitViewModelTypeName[0] = MainWindowViewModelTypeFormat.FormatString(splitViewModelTypeName[0]);
-                var viewModelType = Type.GetType(splitViewModelTypeName.Join(TypeSplitChar.ToString()));
+                var viewModelType = Type.GetType(splitViewModelTypeName.JoinString(TypeSplitChar.ToString()));
                 var viewModel = viewModelType.Construct();
 
                 ((FrameworkElement)d).DataContext = viewModel;

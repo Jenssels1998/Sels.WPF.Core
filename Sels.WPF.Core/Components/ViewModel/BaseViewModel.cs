@@ -31,7 +31,13 @@ namespace Sels.WPF.Core.Components.ViewModel
 
         public BaseViewModel()
         {
-            InitializeControlCommandAsync = CreateAsyncCommand(() => { var task = InitializeControl(); Initialized = true; return task; }, () => !Initialized, affectedProperties: nameof(Initialized));
+            InitializeControlCommandAsync = CreateAsyncCommand(LoadControl, () => !Initialized, affectedProperties: nameof(Initialized));
+        }
+
+        // Manually trigger initialize if viewmodel was already loaded by ui and it won't trigger initialize via BindCommand behaviour
+        public void Reinitialize()
+        {
+            InitializeControlCommandAsync.Execute(null);
         }
 
         #region Command Creation
@@ -93,6 +99,13 @@ namespace Sels.WPF.Core.Components.ViewModel
         }
 
         #endregion
+
+        private Task LoadControl()
+        {
+            var task = InitializeControl(); 
+            Initialized = true; 
+            return task;
+        }
 
         // Events
         /// <summary>

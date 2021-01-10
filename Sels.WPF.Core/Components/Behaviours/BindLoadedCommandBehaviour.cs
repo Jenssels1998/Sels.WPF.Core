@@ -30,13 +30,22 @@ namespace Sels.WPF.Core.Components.Behaviours
 
             if (d is FrameworkElement frameworkElement)
             {
-                frameworkElement.Loaded
+                frameworkElement.DataContextChanged
                   += (o, args) =>
                   {
                       if(frameworkElement.DataContext is BaseViewModel viewModel)
                       {
                           viewModel.InitializeControlCommandAsync.Execute(null);
                       }                     
+                  };
+
+                frameworkElement.Loaded
+                  += (o, args) =>
+                  {
+                      if (frameworkElement.DataContext is BaseViewModel viewModel)
+                      {
+                          viewModel.InitializeControlCommandAsync.Execute(null);
+                      }
                   };
             }
         }

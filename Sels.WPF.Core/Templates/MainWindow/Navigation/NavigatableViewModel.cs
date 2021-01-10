@@ -154,15 +154,9 @@ namespace Sels.WPF.Core.Templates.MainWindow.Navigation
 
                 var lastNavigation = NavigationHistory.LastOrDefault();
                                 
+                SetNavigationContext(viewToNavigateTo, context);
+
                 CurrentControl = viewToNavigateTo;
-
-                SetNavigationContext(CurrentControl, context);
-
-                // Manually trigger initialize if previous navigation is same as current requested view model. Otherwise the initialize won't trigger because view was already rendered
-                if(lastNavigation.ViewModel?.GetType() == viewToNavigateTo.GetType())
-                {
-                    viewToNavigateTo.InitializeControlCommandAsync.Execute(null);
-                }
 
                 NavigationHistory.Add((viewToNavigateTo, context));
             }
