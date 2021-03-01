@@ -4,10 +4,9 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Windows.Input;
-using Sels.Core.Extensions.General.Validation;
+using Sels.Core.Extensions;
 using System.Threading.Tasks;
 using System.Collections.ObjectModel;
-using Sels.Core.Extensions.General.Generic;
 using System.Reflection;
 
 namespace Sels.WPF.Core.Templates.Crud
@@ -259,5 +258,14 @@ namespace Sels.WPF.Core.Templates.Crud
         /// <param name="objectToDelete">Object to delete</param>
         /// <returns>Was object deleted</returns>
         protected abstract Task<bool> DeleteObject(TObject objectToDelete);
+
+        public override void Dispose()
+        {
+            base.Dispose();
+
+            ListViewModel?.Dispose();
+            DetailViewModel?.Dispose();
+            CreateOrUpdateViewModel?.Dispose();
+        }
     }
 }

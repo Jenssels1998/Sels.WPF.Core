@@ -2,12 +2,11 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
-using Sels.Core.Extensions.General.Validation;
+using Sels.Core.Extensions;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using System.Threading.Tasks;
-using Sels.Core.Extensions.Reflection.Types;
-using Sels.Core.Extensions.Reflection.Object;
+using Sels.Core.Extensions.Reflection;
 
 namespace Sels.WPF.Core.Templates.Crud
 {

@@ -5,8 +5,8 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Text;
 using System.Windows;
-using Sels.Core.Extensions.Object.String;
-using Sels.Core.Extensions.Reflection.Types;
+using Sels.Core.Extensions;
+using Sels.Core.Extensions.Reflection;
 
 namespace Sels.WPF.Core.Components.Behaviours
 {

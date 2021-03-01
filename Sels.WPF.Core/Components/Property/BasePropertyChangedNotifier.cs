@@ -1,13 +1,10 @@
-﻿using Sels.Core.Extensions.General.Generic;
-using Sels.Core.Extensions.General.Validation;
+﻿using Sels.Core.Extensions;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Reflection;
 using System.Text;
-using Sels.Core.Extensions.Reflection.Object;
-using Sels.Core.Extensions.Object.ItemContainer;
-using Sels.Core.Extensions.Execution.Linq;
+using Sels.Core.Extensions.Reflection;
 
 namespace Sels.WPF.Core.Components.Property
 {
@@ -46,7 +43,7 @@ namespace Sels.WPF.Core.Components.Property
 
             if (sourceProperty.CanAssign<T>())
             {
-                return (T)_propertyValues.TryGetOrSet(sourceProperty, default(T));
+                return (T)_propertyValues.TryGetOrSet(sourceProperty, () => default(T));
             }
             else
             {

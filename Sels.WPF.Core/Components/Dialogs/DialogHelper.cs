@@ -4,9 +4,8 @@ using System.IO;
 using System.Text;
 using System.Windows;
 using Microsoft.Win32;
-using Sels.Core.Extensions.General.Validation;
-using Sels.Core.Extensions.Io.FileSystem;
-using Sels.Core.Extensions.General.Generic;
+using Sels.Core.Extensions;
+using Sels.Core.Extensions.Io;
 
 namespace Sels.WPF.Core.Components.Dialogs
 {
@@ -22,15 +21,37 @@ namespace Sels.WPF.Core.Components.Dialogs
             return  confirmation == MessageBoxResult.Yes;
         }
 
-        public static bool SelectFile(out FileInfo file)
+        public static bool SelectFile(out FileInfo file, string filter = null)
         {
             file = null;
 
             var dialog = new OpenFileDialog();
 
+            if (filter.HasValue()) dialog.Filter = filter;
+
             var result = dialog.ShowDialog();
 
             if(result.HasValue && result.Value)
+            {
+                file = new FileInfo(dialog.FileName);
+
+                return true;
+            }
+
+            return false;
+        }
+
+        public static bool SelectSaveLocation(out FileInfo file, string filter = null)
+        {
+            file = null;
+
+            var dialog = new SaveFileDialog();
+
+            if (filter.HasValue()) dialog.Filter = filter;
+
+            var result = dialog.ShowDialog();
+
+            if (result.HasValue && result.Value)
             {
                 file = new FileInfo(dialog.FileName);
 

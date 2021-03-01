@@ -1,5 +1,5 @@
-﻿using Sels.Core.Extensions.General.Generic;
-using Sels.Core.Extensions.General.Validation;
+﻿using Sels.Core.Extensions;
+using Sels.Core.Extensions;
 using Sels.WPF.Core.Components.Command.DelegateCommand;
 using Sels.WPF.Core.Components.ViewModel;
 using System;
@@ -7,9 +7,10 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
-using Sels.Core.Extensions.Reflection.Object;
+using Sels.Core.Extensions.Reflection;
 using System.Collections.ObjectModel;
 using System.Linq;
+using Sels.Core;
 
 namespace Sels.WPF.Core.Templates.MainWindow.Navigation
 {
@@ -53,6 +54,9 @@ namespace Sels.WPF.Core.Templates.MainWindow.Navigation
 
             // Setup Exception Handler on main window
             this.ExceptionOccured += ExceptionHandler;
+
+            // Dispose current control when app closes
+            Helper.App.RegisterApplicationClosingAction(() => CurrentControl?.Dispose());
         }
 
         protected override Task InitializeControl()
@@ -153,6 +157,8 @@ namespace Sels.WPF.Core.Templates.MainWindow.Navigation
                 viewToNavigateTo.ValidateVariable(nameof(viewToNavigateTo));
 
                 var lastNavigation = NavigationHistory.LastOrDefault();
+
+                CurrentControl?.Dispose();
                                 
                 SetNavigationContext(viewToNavigateTo, context);
 

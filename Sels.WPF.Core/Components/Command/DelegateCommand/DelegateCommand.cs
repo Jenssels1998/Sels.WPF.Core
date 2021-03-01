@@ -1,10 +1,10 @@
-﻿using Sels.Core.Extensions.General.Generic;
-using Sels.Core.Extensions.General.Validation;
+﻿using Sels.Core.Extensions;
+using Sels.Core.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Windows.Input;
-using Sels.Core.Extensions.Execution.Linq;
+using Sels.Core.Extensions;
 using Sels.Core.Components.Caching;
 using Sels.Core.Components.Variable.VariableActions;
 

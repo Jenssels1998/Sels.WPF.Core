@@ -1,5 +1,4 @@
-﻿using Sels.Core.Extensions.General.Generic;
-using Sels.Core.Extensions.General.Validation;
+﻿using Sels.Core.Extensions;
 using Sels.WPF.Core.Components.Property;
 using System;
 using System.Collections.Generic;

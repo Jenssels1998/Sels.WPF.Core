@@ -5,11 +5,11 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
-using Sels.Core.Extensions.Execution.Linq;
+using Sels.Core.Extensions;
 
 namespace Sels.WPF.Core.Components.ViewModel
 {
-    public abstract class BaseViewModel : BasePropertyChangedNotifier
+    public abstract class BaseViewModel : BasePropertyChangedNotifier, IDisposable
     {
         // Fields
         public bool Initialized {
@@ -130,6 +130,11 @@ namespace Sels.WPF.Core.Components.ViewModel
         protected virtual Task InitializeControl()
         {
             return Task.CompletedTask;
+        }
+
+        public virtual void Dispose()
+        {
+            
         }
     }
 }
